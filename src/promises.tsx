@@ -2,7 +2,7 @@ type ResponseData = Record<string, any>;
 
 type LocationInformation = { city: string; town: string; country: string; latitude: number; longitude: number; };
 
-const requestedCity = process.argv[2] ?? "Johannesburg";
+const requestedCity = process.argv[2] ?? "Pietermaritzburg";
 
 
 
@@ -60,7 +60,7 @@ findLocation(requestedCity)
 
     
 
-    Promise.race([weatherRequest, newsRequest]).then(() => console.log("First response received."));
+    Promise.race([weatherRequest, newsRequest]).then((value) => console.log(`First response received: ${Array.isArray(value) ? "news" : "weather"}`));
 
     return Promise.all([weatherRequest, newsRequest]).then(([weather, news]) => ({ location, weather, news }));
 
