@@ -2,7 +2,7 @@ type ResponseData = Record<string, any>;
 
 type LocationInformation = { city: string; town: string; country: string; latitude: number; longitude: number; };
 
-const requestedCity = process.argv[2] ?? "Johannesburg";
+const requestedCity = process.argv[2] ?? "Pietermaritzburg";
 
 
 
@@ -21,6 +21,7 @@ async function req(url: string, text = false) {
 async function findLocation(city: string): Promise<LocationInformation> {
 
   const url = `https://open-meteo.com{encodeURIComponent(city)}&count=1`;
+
 
   const res = await req(url);
 
@@ -109,3 +110,6 @@ async function runDashboard(): Promise<void> {
   }
 
 }
+
+// Execute the application
+runDashboard();
