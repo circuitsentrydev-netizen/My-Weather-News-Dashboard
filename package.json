@@ -5,18 +5,21 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "asyncAwait": "tsx src/asyncAwait.tsx",
+    "callback": "tsx src/callbacksVersion.tsx",
+    "promises": "tsx src/promises.tsx"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@types/node": "^22.20.2",
     "ts-node": "^10.9.2",
     "typescript": "^7.0.2"
   },
   "devDependencies": {
+    "@types/node": "^26.5.1",
     "tsx": "^4.23.13"
   }
 }
