@@ -1,63 +1,119 @@
 import https from "node:https";
 
 type ResponseData = Record<string, any>;
+type CallbackFunction<T> = (error: Error | null, data?: T) => void;
 
-type CallbackFunction<Value> = (error: Error | null, value?: Value) => void;
+type LocationInformation = { 
+  city: string; 
+  town: string; 
+  country: string; 
+  latitude: number; 
+  longitude: number; 
+};
 
-type LocationInformation = { city: string; town: string; country: string; latitude: number; longitude: number; };
+const requestedCity = "Pietermaritzburg";
 
-const requestedCity = process.argv[2] ?? "Pietermaritzburg";
+const DUT_INDUMISO: LocationInformation = {
+  city: "Pietermaritzburg",
+  town: "Edendale",
+  country: "South Africa",
+  latitude: -29.6468624,
+  longitude: 30.3494303,
+};
 
-function requestData(endpoint: string, callback: CallbackFunction<any>, readJson = true): void {
-  https.get(endpoint, response => {
+// Low-level HTTPS request helper using callbacks
+function requestData(url: string, callback: CallbackFunction<any>): void {
+  https.get(url, (res) => {
     let body = "";
 
-    response.setEncoding("utf8")
-    .on("data", chunk => body += chunk)
-    .on("end", () => {
-      if ((response.statusCode ?? 500) >= 400) return callback(new Error(`HTTP ${response.statusCode}`));
-      try { callback(null, readJson ? JSON.parse(body) : body); } catch { callback(new Error("Could not read the response.")); }
+    if ((res.statusCode ?? 500) >= 400) {
+      return callback(new Error(`HTTP ${res.statusCode}`));
+    }
+
+    res.setEncoding("utf8");
+    res.on("data", (chunk) => { body += chunk; });
+    res.on("end", () => {
+      try {
+        callback(null, JSON.parse(body));
+      } catch (err) {
+        callback(new Error("Failed to parse JSON response."));
+      }
     });
-  }).on("error", callback);
+  }).on("error", (err) => callback(err));
 }
 
 function findLocation(city: string, callback: CallbackFunction<LocationInformation>): void {
-  requestData(`https://open-meteo.com{encodeURIComponent(city)}&count=1`, (error, response) => {
+  if (city.toLowerCase() === "pietermaritzburg") {
+    return callback(null, DUT_INDUMISO);
+  }
+
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`;
+  requestData(url, (err, response) => {
+    if (err) return callback(err);
+
     const result = response?.results?.[0];
+    if (!result) return callback(new Error("City not found."));
 
-    if (error || !result) return callback(error ?? new Error("City not found."));
-
-    callback(null, { city: result.name, town: result.admin3 ?? result.admin2 ?? result.name, country: result.country, latitude: result.latitude, longitude: result.longitude });
+    callback(null, {
+      city: result.name,
+      town: result.admin3 ?? result.admin2 ?? result.name,
+      country: result.country,
+      latitude: result.latitude,
+      longitude: result.longitude,
+    });
   });
 }
 
-function findNews(location: LocationInformation, callback: CallbackFunction<ResponseData[]>): void {
-  requestData(`https://google.com{encodeURIComponent(location.city)}+South+Africa&hl=en-ZA&gl=ZA&ceid=ZA:en`, (error, response) => {
-    if (error) return callback(error);
-
-    const readTag = (article: string, name: string) => (article.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`))?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/&amp;/g, "&");
-
-    callback(null, [...String(response).matchAll(/<item>([\s\S]*?)<\/item>/g)].slice(0, 3).map(match => ({
-      headline: readTag(match[0], "title"), source: readTag(match[0], "source"), date: readTag(match[0], "pubDate"), link: readTag(match[0], "link")
-    })));
-  }, false);
+function findWeather(loc: LocationInformation, callback: CallbackFunction<ResponseData>): void {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m`;
+  requestData(url, callback);
 }
 
-findLocation(requestedCity, (locationError, location) => {
-  if (locationError || !location) return console.error(locationError?.message);
+function findNews(loc: LocationInformation, callback: CallbackFunction<ResponseData[]>): void {
+  const url = `https://dummyjson.com/posts?limit=3`;
+  requestData(url, (err, response) => {
+    if (err) return callback(err);
 
-  requestData(`https://open-meteo.com{location.latitude}&longitude=${location.longitude}&current=temperature_2m,relative_humidity_2m,wind_speed_10m`, (weatherError, weather) => {
-    if (weatherError || !weather) return console.error(weatherError?.message);
+    const news = (response?.posts ?? []).slice(0, 3).map((post: ResponseData) => ({
+      headline: post.title,
+      source: "DummyJSON",
+      date: "",
+      link: `https://dummyjson.com/posts/${post.id}`,
+    }));
 
-    findNews(location, (newsError, news) => {
-      if (newsError || !news) return console.error(newsError?.message);
-      
-      const currentWeather = weather.current;
+    callback(null, news);
+  });
+}
+
+// ==========================================
+// DEMONSTRATING "CALLBACK HELL" (Pyramid of Doom)
+// ==========================================
+findLocation(requestedCity, (locationErr, location) => {
+  if (locationErr || !location) {
+    return console.error("Location error:", locationErr?.message);
+  }
+
+  // Nested call 1: Weather
+  findWeather(location, (weatherErr, weather) => {
+    if (weatherErr || !weather) {
+      return console.error("Weather error:", weatherErr?.message);
+    }
+
+    // Nested call 2: News
+    findNews(location, (newsErr, news) => {
+      if (newsErr || !news) {
+        return console.error("News error:", newsErr?.message);
+      }
+
+      // Final output rendered inside deeply nested callback
+      const cur = weather.current;
       console.log(`\n${location.country} | ${location.city} | ${location.town}`);
-      console.log(`Temperature: ${currentWeather.temperature_2m}°C | Humidity: ${currentWeather.relative_humidity_2m}%`);
-      console.log(`Wind: ${currentWeather.wind_speed_10m} km/h\n`);
+      console.log(`Temperature: ${cur.temperature_2m}°C | Humidity: ${cur.relative_humidity_2m}%`);
+      console.log(`Wind: ${cur.wind_speed_10m} km/h\n`);
 
-      news.forEach((article, index) => console.log(`${index + 1}. ${article.headline}\n${article.source} | ${article.date}\n${article.link}`));
+      news.forEach((article, index) => {
+        console.log(`${index + 1}. ${article.headline}\n${article.source}\n${article.link}`);
+      });
     });
   });
 });
