@@ -1,0 +1,31 @@
+# Weather & News Dashboard
+
+A TypeScript project demonstrating asynchronous JavaScript/TypeScript concepts by fetching weather data from **Open-Meteo** and news data from **DummyJSON**. 
+
+This repository contains three implementations of the dashboard execution flow to compare different asynchronous patterns:
+1. **Callbacks (`callbacksVersion.tsx`)**: Demonstrates traditional asynchronous handling and nested callbacks ("callback hell").
+2. **Promises (`promises.tsx`)**: Demonstrates modern `Promise.all` and `Promise.race` handling.
+3. **Async / Await (`asyncAwait.tsx`)**: Demonstrates clean, modern `async/await` syntax.
+
+---
+
+##  Features
+
+- **Location Lookup**: Resolves geographic coordinates and location metadata for Pietermaritzburg, South Africa.
+- **Weather Integration**: Fetches real-time weather metrics including temperature, relative humidity, and wind speed via Open-Meteo API.
+- **News Integration**: Retrieves and formats top posts/news stories via DummyJSON.
+- **Async Pattern Comparisons**: Logs performance race results between weather and news API endpoints.
+
+---
+
+##  Project Structure
+
+```text
+my-weather-news-dashboard/
+├── src/
+│   ├── callbacksVersion.tsx  # Callbacks implementation (node:https)
+│   ├── promises.tsx          # Promise-based implementation
+│   └── asyncAwait.tsx        # Async/Await implementation
+├── package.json
+├── tsconfig.json
+└── README.md
